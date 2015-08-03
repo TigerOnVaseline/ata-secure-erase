@@ -20,7 +20,7 @@
 
 # DISCLAIMER
 # Care has been taken to thoroughly test this script using a variety of cases,
-# though, as with all Linux/UNIX-like affairs, it may still fail in mysterious
+# as with all Linux/UNIX-like affairs, it may still fail in mysterious
 # circumstances.
 
 # In particular, ERASE UNIT may fail to erase some SSD drives:
@@ -33,13 +33,13 @@ if [ "$EUID" -ne  "0" ]; then
 	exit 1
 fi 
 
-# POSIX-compliant method for checking a command available 
-if [ $(type hdparm >/dev/null 2>&1) ]; then
+# POSIX-compliant method for checking a command is available 
+if ! type hdparm >/dev/null 2>&1; then
 	echo >&2 "Error: This script requires hdparm"
 	exit 1
 fi
 
-if [ $(type awk >/dev/null 2>&1) ]; then
+if ! type awk >/dev/null 2>&1; then
 	echo >&2 "Error: This script requires awk"
 	exit 1
 fi
@@ -59,9 +59,9 @@ if [ "$1" == "-l" ]; then
 	# Use the most portable method for finding available ATA disks, anything 
 	# found by udev should end in a letter
 	for disk in $(awk '/[0-9].*[a-z]$/ {print $4}' /proc/partitions); do
-		# hdparm output should match "Security:"  with "Master" on the 
+		# hdparm output should match "Security:" with "Master" on the 
 		# following line if SECURITY ERASE UNIT is supported (NR+1). Command 
-		# output  must be quoted for bash to handle metachars properly
+		# output must be quoted for bash to handle metachars properly
 		if [ "$(hdparm -I /dev/${disk} 2>&1| awk '/Security:/{n=NR+1} NR==n { print $1 }')" == "Master" ]; then
 			echo /dev/${disk}
 		fi
@@ -93,9 +93,7 @@ if [ "$(hdparm -I ${ata_disk} 2>&1| awk '/frozen/ { print $1 }')" != "not" ]; th
 	exit 1
 fi
 
-if [ $force ]; then
-user_choice='Y'
-else
+if [ ! $force ]; then
 	echo "WARNING: this procedure will erase all data on ${ata_disk} beyond recovery." 
 	echo "Continue [Y/N]?"
 	read user_choice
