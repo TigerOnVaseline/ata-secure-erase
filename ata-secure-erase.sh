@@ -32,6 +32,7 @@ readonly SCRIPT_NAME=${0##*/}
 readonly -a ARGV=("$@")
 readonly ARGC=("$#")
 readonly DISK_PASSWORD="123456"
+readonly REQUIRED_OS="Linux"
 readonly MIN_KERNEL_VERSION=20627
 readonly MIN_BASH_VERSION=4
 readonly REQUIRED_COMMANDS="awk grep hdparm lsblk udevadm uname"
@@ -142,7 +143,6 @@ main() {
     local kernel_release
     local kernel_version
     local kernel_version_numeric
-    local required_os="Linux"
     local ata_disk="$1"
     local force=false
 
@@ -155,7 +155,7 @@ main() {
     # Get operating system name (POSIX)
     system_name=$(uname -s)
 
-    if [[ "${system_name}" != "${required_os}" ]]; then
+    if [[ "${system_name}" != "${REQUIRED_OS}" ]]; then
         echo >&2 "This script can only run on Linux"
         exit 1
     fi
