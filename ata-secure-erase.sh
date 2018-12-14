@@ -230,7 +230,7 @@ main() {
     fi
 
     if [[ ! $force ]]; then
-        echo "WARNING: this procedure will erase all data on ${ata_disk} beyond recovery." 
+        echo "[5m[1;31mWARNING: this procedure will erase all data on ${ata_disk} beyond recovery.[0m" 
         echo -n "Continue [Y/N]?"
         read -r user_choice
     fi
