@@ -56,18 +56,22 @@ _EOF_
 
 list_available_disks() {
     local device
-    local eligible_disk_found
+    local eligible_disk
+    local -a eligible_disks
     udevadm settle # Syncronise with udev first
-    echo "Available disks for secure erase are:"
     for device in $(lsblk --nodeps --noheadings --output NAME --paths); do
         if is_block_device "${device}" && ata_erase_support "${device}"; then
-            echo "${device}"
-            eligible_disk_found=true
-        fi
-        if [[ ! "$eligible_disk_found" == "true" ]]; then
-            echo >&2 "No supported disks found for secure erase" 
+            eligible_disks+=("${device}")
         fi
     done
+    if [[ ${eligible_disks#[@]} -gt 0 ]]; then
+        echo "Available disks for secure erase are:" 
+        for eligible_disk in "${eligible_disks[@]}"; do
+            echo "${eligible_disk}"
+        done
+    else
+        echo >&2 "No supported disks found for secure erase" 
+    fi
 }
 
 is_block_device() {
@@ -85,10 +89,10 @@ ata_erase_support() {
     local password_supported
     # hdparm output should match "Security:" with "Master" on the 
     # following line if SECURITY ERASE UNIT is supported (NR+1).
-    if hdparm -I "${disk}" | grep -q '^Security:'; then
-        master_revision_present=$(hdparm -I "${disk}" | awk '/Security:/{n=NR+1} NR==n { print $1 }')
+    if hdparm -I "${disk}" 2>/dev/null | grep -q '^Security:'; then
+        master_revision_present=$(hdparm -I "${disk}" 2>/dev/null| awk '/Security:/{n=NR+1} NR==n { print $1 }')
         if [[ "${master_revision_present}" =~ ^Master ]]; then
-            password_supported=$(hdparm -I "${disk}" | awk '/Security:/{n=NR+2} NR==n { print $1,$2 }')
+            password_supported=$(hdparm -I "${disk}" 2>/dev/null | awk '/Security:/{n=NR+2} NR==n { print $1,$2 }')
             if [[ "${password_supported}" =~ ^supported ]]; then
                 true
             else
@@ -104,7 +108,7 @@ ata_erase_support() {
 
 is_unfrozen() {
     local frozen_state
-    frozen_state=$(hdparm -I "${ata_disk}" | awk '/frozen/ { print $1,$2 }')
+    frozen_state=$(hdparm -I "${ata_disk}" 2>/dev/null | awk '/frozen/ { print $1,$2 }')
     if [ "${frozen_state}" == "not frozen" ]; then
         true
     else
@@ -119,7 +123,7 @@ set_password () {
 
 is_password_set () {
     local password_state
-    password_state=$(hdparm -I "$1" | awk '/Security:/{n=NR+3} NR==n { print $1,$2 }')
+    password_state=$(hdparm -I "$1" 2>/dev/null | awk '/Security:/{n=NR+3} NR==n { print $1,$2 }')
     if [[ ${password_state} == "enabled" ]]; then
         true
     else
@@ -145,6 +149,7 @@ main() {
     local kernel_version_numeric
     local ata_disk="$1"
     local force=false
+    local -l user_choice
 
 
     if [[ "${BASH_VERSINFO[0]}" -lt "${MIN_BASH_VERSION}" ]]; then
@@ -156,7 +161,7 @@ main() {
     system_name=$(uname -s)
 
     if [[ "${system_name}" != "${REQUIRED_OS}" ]]; then
-        echo >&2 "This script can only run on Linux"
+        echo >&2 "This script can only run on ${REQUIRED_OS}"
         exit 1
     fi
 
@@ -235,7 +240,7 @@ main() {
         read -r user_choice
     fi
 
-    if [[ "${user_choice,,}" == "y" ]]; then
+    if [[ "${user_choice}" == "y" ]]; then
         echo "Attempting to set user password and enable secure erase..."
         set_password "${ata_disk}"
     else
