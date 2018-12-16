@@ -64,7 +64,7 @@ list_available_disks() {
             eligible_disks+=("${device}")
         fi
     done
-    if [[ ${eligible_disks#[@]} -gt 0 ]]; then
+    if [[ ${#eligible_disks[@]} -gt 0 ]]; then
         echo "Available disks for secure erase are:" 
         for eligible_disk in "${eligible_disks[@]}"; do
             echo "${eligible_disk}"
@@ -149,7 +149,7 @@ main() {
     local kernel_version_numeric
     local ata_disk="$1"
     local force=false
-    local -l user_choice
+    local -l user_choice # Force lower case
 
 
     if [[ "${BASH_VERSINFO[0]}" -lt "${MIN_BASH_VERSION}" ]]; then
@@ -229,18 +229,17 @@ main() {
 
     # Check for frozen state
     if ! is_unfrozen "${ata_disk}"; then
-        echo >&2 "Error: Disk ${ata_disk} security state is frozen, check \
-        https://ata.wiki.kernel.org/index.php/ATA_Secure_Erase for options"
+        echo >&2 "Error: Disk ${ata_disk} security state is frozen, check https://ata.wiki.kernel.org/index.php/ATA_Secure_Erase for options"
         exit 1
     fi
 
-    if [[ ! $force ]]; then
+    if [[ "${force}" == false ]]; then
         echo "[5m[1;31mWARNING: this procedure will erase all data on ${ata_disk} beyond recovery.[0m" 
         echo -n "Continue [Y/N]?"
         read -r user_choice
     fi
 
-    if [[ "${user_choice}" == "y" ]]; then
+    if [[ "${force}" == true || "${user_choice}" == "y" ]]; then
         echo "Attempting to set user password and enable secure erase..."
         set_password "${ata_disk}"
     else
