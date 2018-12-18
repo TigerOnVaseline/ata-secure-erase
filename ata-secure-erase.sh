@@ -87,7 +87,6 @@ ata_erase_support() {
     local disk="$1"
     local -a hdparm_identify_result
     local identify_index
-    local security_supported=false
     # If SECURITY ERASE UNIT is supported, hdparm -I (identify) output should 
     # match "Security:" with "supported" on either the first or second
     # subsequent line:
@@ -98,9 +97,13 @@ ata_erase_support() {
         if [[ "${hdparm_identify_result[$identify_index]}" =~ ^Security: ]]; then
             if [[ "${hdparm_identify_result[$identify_index+1]//$'\t'/}" =~ ^supported \
                 || "${hdparm_identify_result[$identify_index+2]//$'\t'/}" =~ ^supported ]]; then
-                security_supported=true
+                true
+            else
+                false
             fi
         break
+        else
+            false
         fi
     done
 }
