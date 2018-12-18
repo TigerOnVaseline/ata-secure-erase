@@ -85,25 +85,24 @@ is_block_device() {
 
 ata_erase_support() {
     local disk="$1"
-    local master_revision_present
-    local password_supported
-    # hdparm output should match "Security:" with "Master" on the 
-    # following line if SECURITY ERASE UNIT is supported (NR+1).
-    if hdparm -I "${disk}" 2>/dev/null | grep -q '^Security:'; then
-        master_revision_present=$(hdparm -I "${disk}" 2>/dev/null| awk '/Security:/{n=NR+1} NR==n { print $1 }')
-        if [[ "${master_revision_present}" =~ ^Master ]]; then
-            password_supported=$(hdparm -I "${disk}" 2>/dev/null | awk '/Security:/{n=NR+2} NR==n { print $1,$2 }')
-            if [[ "${password_supported}" =~ ^supported ]]; then
-                true
-            else
-                false
+    local -a hdparm_identify_result
+    local identify_index
+    local security_supported=false
+    # If SECURITY ERASE UNIT is supported, hdparm -I (identify) output should 
+    # match "Security:" with "supported" on either the first or second
+    # subsequent line:
+    # https://salsa.debian.org/debian/hdparm/blob/master/identify.c
+    readarray -t hdparm_identify_result < <( hdparm -I "${disk}" 2>/dev/null ) 
+    # Could probably have done this with grep -c instead. Oh, well.
+    for identify_index in "${!hdparm_identify_result[@]}"; do
+        if [[ "${hdparm_identify_result[$identify_index]}" =~ ^Security: ]]; then
+            if [[ "${hdparm_identify_result[$identify_index+1]//$'\t'/}" =~ ^supported \
+                || "${hdparm_identify_result[$identify_index+2]//$'\t'/}" =~ ^supported ]]; then
+                security_supported=true
             fi
-        else
-            false
+        break
         fi
-    else
-        false
-    fi
+    done
 }
 
 is_unfrozen() {
